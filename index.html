@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="description" content="Lua Quest — Roblox 开发者模拟器：模拟经营 + RPG 叙事 + Roguelike Game Jam">
+    <title>Lua Quest — Roblox 开发者模拟器</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="stylesheet" href="styles.css">
+    <!-- 加载 Fengari UMD 版本 (本地离线可用) -->
+    <script src="vendor/fengari-bundle.js"></script>
+</head>
+<body>
+    <!-- 加载屏幕 -->
+    <div id="loadingScreen" class="loading-screen" role="status" aria-label="加载中">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">正在加载 Lua Quest...</p>
+        <p class="loading-subtext" id="loadingStatus">初始化引擎...</p>
+        <div class="loading-progress">
+            <div class="loading-bar" id="loadingBar"></div>
+        </div>
+    </div>
+
+    <!-- 错误界面 -->
+    <div id="errorScreen" class="error-screen hidden" role="alert">
+        <div class="error-content">
+            <span class="error-icon">⚠️</span>
+            <h2>加载失败</h2>
+            <p id="errorMessage">无法加载游戏引擎，请检查网络连接后刷新重试。</p>
+            <div class="error-actions">
+                <button class="btn btn-primary" id="btnRetry">重试</button>
+                <button class="btn btn-secondary" id="btnOfflineMode">离线模式（功能受限）</button>
+            </div>
+            <details class="error-details">
+                <summary>技术详情</summary>
+                <pre id="errorDetails"></pre>
+            </details>
+        </div>
+    </div>
+
+    <div id="app" class="app hidden">
+        <!-- 顶部状态栏 -->
+        <header class="top-bar" role="banner">
+            <div class="studio-info">
+                <h1 class="studio-name" id="studioName">Lua Quest</h1>
+                <span class="chapter-badge" id="chapterBadge">Prologue</span>
+            </div>
+            <div class="resources-bar" role="region" aria-label="资源概览">
+                <div class="resource" data-resource="money">
+                    <span class="resource-icon">💰</span>
+                    <span class="resource-value" id="money">0</span>
+                    <span class="resource-label">资金</span>
+                </div>
+                <div class="resource" data-resource="xp">
+                    <span class="resource-icon">⭐</span>
+                    <span class="resource-value" id="xp">0</span>
+                    <span class="resource-label">经验</span>
+                </div>
+                <div class="resource" data-resource="reputation">
+                    <span class="resource-icon">🏆</span>
+                    <span class="resource-value" id="reputation">0</span>
+                    <span class="resource-label">声望</span>
+                </div>
+                <div class="resource" data-resource="techDebt">
+                    <span class="resource-icon">⚠️</span>
+                    <span class="resource-value" id="techDebt">0</span>
+                    <span class="resource-label">技术债</span>
+                </div>
+            </div>
+            <div class="time-bar">
+                <span class="time-label">第</span>
+                <span id="currentDay">1</span>
+                <span class="time-label">天</span>
+                <span class="time-separator">|</span>
+                <span id="currentPhase">规划期</span>
+            </div>
+        </header>
+
+        <!-- 主布局 -->
+        <main class="main-layout" role="main">
+            <!-- 左侧：导航/剧情/团队 -->
+            <aside class="sidebar-left" id="sidebarLeft" role="complementary" aria-label="游戏菜单">
+                <nav class="sidebar-nav" role="navigation">
+                    <button class="nav-btn active" data-tab="story" aria-selected="true">
+                        <span class="nav-icon">📖</span>
+                        <span class="nav-label">剧情</span>
+                    </button>
+                    <button class="nav-btn" data-tab="studio" aria-selected="false">
+                        <span class="nav-icon">🏢</span>
+                        <span class="nav-label">工作室</span>
+                    </button>
+                    <button class="nav-btn" data-tab="skills" aria-selected="false">
+                        <span class="nav-icon">🧠</span>
+                        <span class="nav-label">技能树</span>
+                    </button>
+                    <button class="nav-btn" data-tab="gamejam" aria-selected="false">
+                        <span class="nav-icon">🎮</span>
+                        <span class="nav-label">Game Jam</span>
+                    </button>
+                    <button class="nav-btn" data-tab="settings" aria-selected="false">
+                        <span class="nav-icon">⚙️</span>
+                        <span class="nav-label">设置</span>
+                    </button>
+                </nav>
+                <div class="sidebar-content" id="sidebarContent">
+                    <!-- 动态内容区 -->
+                </div>
+            </aside>
+
+            <!-- 中央：代码编辑器/游戏视图 -->
+            <section class="center-panel" id="centerPanel" role="main" aria-label="开发环境">
+                <div class="panel-tabs" role="tablist">
+                    <button class="panel-tab active" role="tab" aria-selected="true" data-panel="editor" aria-controls="panel-editor">代码编辑器</button>
+                    <button class="panel-tab" role="tab" aria-selected="false" data-panel="preview" aria-controls="panel-preview">运行预览</button>
+                    <button class="panel-tab" role="tab" aria-selected="false" data-panel="console" aria-controls="panel-console">控制台</button>
+                    <button class="panel-tab" role="tab" aria-selected="false" data-panel="tests" aria-controls="panel-tests">测试报告</button>
+                </div>
+                <div class="panel-content">
+                    <div class="panel-pane active" id="panel-editor" role="tabpanel" aria-labelledby="tab-editor">
+                        <div class="editor-toolbar">
+                            <button class="toolbar-btn" id="btnRun" aria-label="运行代码 (Ctrl+Enter)">
+                                <span class="btn-icon">▶</span>
+                                <span class="btn-text">运行</span>
+                            </button>
+                            <button class="toolbar-btn" id="btnTest" aria-label="运行测试 (Ctrl+T)">
+                                <span class="btn-icon">🧪</span>
+                                <span class="btn-text">测试</span>
+                            </button>
+                            <button class="toolbar-btn" id="btnFormat" aria-label="格式化代码">
+                                <span class="btn-icon">✨</span>
+                                <span class="btn-text">格式化</span>
+                            </button>
+                            <button class="toolbar-btn" id="btnHint" aria-label="显示提示">
+                                <span class="btn-icon">💡</span>
+                                <span class="btn-text">提示</span>
+                            </button>
+                            <div class="toolbar-spacer"></div>
+                            <select id="languageMode" aria-label="语言模式">
+                                <option value="luau">Luau (Roblox)</option>
+                                <option value="lua">Lua 5.1</option>
+                            </select>
+                        </div>
+                        <div class="editor-container">
+                            <textarea id="codeEditor" class="code-editor" spellcheck="false" aria-label="Luau 代码编辑器" placeholder="-- 在此编写 Luau 代码&#10;local function hello()&#10;    print("Hello, Roblox!")&#10;end&#10;hello()"></textarea>
+                            <div class="line-numbers" id="lineNumbers" aria-hidden="true"></div>
+                        </div>
+                        <div class="editor-status">
+                            <span id="editorStatus">就绪</span>
+                            <span id="cursorPosition">第 1 行，第 1 列</span>
+                        </div>
+                    </div>
+                    <div class="panel-pane" id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" hidden>
+                        <div class="preview-container">
+                            <iframe id="previewFrame" class="preview-frame" sandbox="allow-scripts" aria-label="游戏预览"></iframe>
+                            <div class="preview-overlay" id="previewOverlay">
+                                <div class="overlay-content">
+                                    <span class="overlay-icon">🎮</span>
+                                    <p>点击「运行」在 Roblox 模拟器中预览</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel-pane" id="panel-console" role="tabpanel" aria-labelledby="tab-console" hidden>
+                        <div class="console-toolbar">
+                            <button class="toolbar-btn" id="btnClearConsole" aria-label="清空控制台">
+                                <span class="btn-icon">🗑️</span>
+                                <span class="btn-text">清空</span>
+                            </button>
+                            <button class="toolbar-btn" id="btnExportConsole" aria-label="导出日志">
+                                <span class="btn-icon">📥</span>
+                                <span class="btn-text">导出</span>
+                            </button>
+                            <label class="console-filter">
+                                <input type="checkbox" id="filterErrors" checked> 错误
+                                <input type="checkbox" id="filterWarnings" checked> 警告
+                                <input type="checkbox" id="filterLogs" checked> 日志
+                            </label>
+                        </div>
+                        <div class="console-output" id="consoleOutput" role="log" aria-live="polite"></div>
+                    </div>
+                    <div class="panel-pane" id="panel-tests" role="tabpanel" aria-labelledby="tab-tests" hidden>
+                        <div class="tests-toolbar">
+                            <button class="toolbar-btn" id="btnRunAllTests" aria-label="运行所有测试">
+                                <span class="btn-icon">▶</span>
+                                <span class="btn-text">运行所有测试</span>
+                            </button>
+                            <span class="test-summary" id="testSummary">暂无测试</span>
+                        </div>
+                        <div class="tests-list" id="testsList" role="list" aria-label="测试用例列表"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧：任务/提示/文档 -->
+            <aside class="sidebar-right" id="sidebarRight" role="complementary" aria-label="任务与帮助">
+                <div class="sidebar-tabs" role="tablist">
+                    <button class="sidebar-tab active" role="tab" aria-selected="true" data-side-tab="objectives" aria-controls="side-objectives">任务</button>
+                    <button class="sidebar-tab" role="tab" aria-selected="false" data-side-tab="hints" aria-controls="side-hints">提示</button>
+                    <button class="sidebar-tab" role="tab" aria-selected="false" data-side-tab="docs" aria-controls="side-docs">文档</button>
+                    <button class="sidebar-tab" role="tab" aria-selected="false" data-side-tab="npc" aria-controls="side-npc">NPC</button>
+                </div>
+                <div class="sidebar-panels">
+                    <div class="sidebar-pane active" id="side-objectives" role="tabpanel" aria-labelledby="tab-objectives">
+                        <h3>当前目标</h3>
+                        <ul class="objectives-list" id="objectivesList" role="list"></ul>
+                        <div class="progress-section">
+                            <h4>章节进度</h4>
+                            <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="chapterProgress">
+                                <div class="progress-fill" id="progressFill"></div>
+                            </div>
+                            <span class="progress-text" id="progressText">0%</span>
+                        </div>
+                    </div>
+                    <div class="sidebar-pane" id="side-hints" role="tabpanel" aria-labelledby="tab-hints" hidden>
+                        <h3>💡 提示与示例</h3>
+                        <div class="hints-content" id="hintsContent"></div>
+                    </div>
+                    <div class="sidebar-pane" id="side-docs" role="tabpanel" aria-labelledby="tab-docs" hidden>
+                        <h3>📚 Luau 参考文档</h3>
+                        <div class="docs-content" id="docsContent">
+                            <div class="doc-search">
+                                <input type="search" id="docSearch" placeholder="搜索 API..." aria-label="搜索文档">
+                            </div>
+                            <div class="doc-categories" id="docCategories"></div>
+                        </div>
+                    </div>
+                    <div class="sidebar-pane" id="side-npc" role="tabpanel" aria-labelledby="tab-npc" hidden>
+                        <h3>👥 NPC 关系</h3>
+                        <div class="npc-list" id="npcList"></div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- 底部通知/日志 -->
+        <footer class="bottom-bar" role="contentinfo">
+            <div class="notification-area" id="notificationArea" role="status" aria-live="polite"></div>
+            <div class="version-info">Lua Quest v1.0.0 | Fengari 0.1.4 | PWA Ready</div>
+        </footer>
+    </div>
+
+    <!-- 模态对话框容器 -->
+    <div id="modalContainer" class="modal-container" role="dialog" aria-modal="true" hidden></div>
+
+    <!-- 主应用 -->
+    <script type="module" src="app.js"></script>
+
+    <!-- 注册 Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(console.error);
+        }
+    </script>
+</body>
+</html>

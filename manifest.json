@@ -1,0 +1,80 @@
+{
+    "name": "Lua Quest — Roblox 开发者模拟器",
+    "short_name": "Lua Quest",
+    "description": "把学 Roblox/Luau 开发做成一款模拟经营 + RPG 叙事 + Roguelike 混合游戏",
+    "start_url": "/",
+    "display": "standalone",
+    "orientation": "landscape-primary",
+    "background_color": "#0d0d14",
+    "theme_color": "#1a1a2e",
+    "icons": [
+        {
+            "src": "icon-72.png",
+            "sizes": "72x72",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icon-96.png",
+            "sizes": "96x96",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icon-128.png",
+            "sizes": "128x128",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icon-144.png",
+            "sizes": "144x144",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icon-152.png",
+            "sizes": "152x152",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icon-384.png",
+            "sizes": "384x384",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["education", "games", "simulation"],
+    "shortcuts": [
+        {
+            "name": "继续游戏",
+            "short_name": "继续",
+            "description": "继续上次的游戏进度",
+            "url": "/?continue=true",
+            "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Game Jam",
+            "short_name": "Game Jam",
+            "description": "参加周常 Game Jam 挑战",
+            "url": "/?mode=gamejam",
+            "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+        }
+    ],
+    "screenshots": [],
+    "related_applications": [],
+    "prefer_related_applications": false
+}

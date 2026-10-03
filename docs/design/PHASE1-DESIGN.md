@@ -165,7 +165,7 @@
 6. 体积 ≤ 2MB（gzip 后）
 7. `luau-analyze` WASM 类型检查可行性（官方 playground 已证明，确认能否独立抽取）
 
-**Spike 失败的降级预案**：回退方案 A（词法级转译层），设计文档第 5.2 节路线表保持有效。
+**Spike 结果（2026-10-03，已执行）：GO ✅** —— 8/9 项通过，详见 `spikes/luau-wasm-spike/SPIKE-RESULT.md`。要点：Luau 语法原生全通（无需转译）、互操作/死循环保护/行号堆栈/体积全达标；唯一缺口「指令预算中断 API」未暴露，P0 改用墙钟时间预算（Worker 超时 terminate），P1 评估 fork luau-interop 补中断绑定。Asyncify 使 JS Promise 在 Luau 侧自动 await，为 task.wait 与虚拟时钟提供官方路径。
 
 ---
 

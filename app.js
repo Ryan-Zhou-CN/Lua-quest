@@ -4,7 +4,8 @@
  */
 
 import { createState } from './state.js';
-import { initFengari, runLuauCode, createSandbox } from './fengari-wrapper.js';
+import { createLuaEngine } from './engine/LuaEngine.js';
+import { createRobloxGlobals } from './engine/RobloxAPI.js';
 import { initUI, updateUI, filterDocs } from './ui.js';
 import { loadChapter, getCurrentChapter } from './chapters/index.js';
 import { initStorage, saveGame, loadGame, exportSave, importSave } from './storage.js';
@@ -77,8 +78,8 @@ const state = createState({
     
     // 系统状态
     system: {
-        fengariLoaded: false,
-        fengariError: null,
+        luaEngineReady: false,
+        luaEngineError: null,
         offlineMode: false,
     },
 });
@@ -178,19 +179,22 @@ async function init() {
         console.log('[Lua Quest] 存档加载成功');
     }
     
-    showLoading('初始化 Fengari 引擎...', 40);
+    showLoading('初始化 Luau 引擎...', 40);
     
-    // 3. 初始化 Fengari（带错误处理）
+    // 3. 初始化 Luau 引擎 (luau-web / LuaEngine.js)
     try {
-        await initFengari();
-        state.system.fengariLoaded = true;
-        console.log('[Lua Quest] Fengari 就绪');
-        showLoading('Fengari 引擎就绪', 60);
+        // 创建引擎实例并注入 Roblox 全局 API
+        const engine = await createLuaEngine({ initialGlobals: {} });
+        const { globals } = createRobloxGlobals(engine);
+        // globals 已通过 createRobloxGlobals 内部的 engine.globalsSet 注入
+        window.luaEngine = engine; // 全局暴露供调试
+        state.system.luaEngineReady = true;
+        console.log('[Lua Quest] Luau 引擎就绪 (luau-web)');
+        showLoading('Luau 引擎就绪', 60);
     } catch (error) {
-        console.error('[Lua Quest] Fengari 初始化失败:', error);
-        state.system.fengariLoaded = false;
-        state.system.fengariError = error.message;
-        // 不抛出错误，继续加载 UI，稍后显示错误
+        console.error('[Lua Quest] Luau 引擎初始化失败:', error);
+        state.system.luaEngineReady = false;
+        state.system.luaEngineError = error.message;
         showLoading('引擎加载失败，启用基础模式...', 60);
     }
     
@@ -226,9 +230,9 @@ async function init() {
     // 10. 隐藏加载屏幕，显示主界面
     await hideLoadingScreen();
     
-    // 11. 检查 Fengari 错误
-    if (!state.system.fengariLoaded) {
-        showFengariError(state.system.fengariError);
+    // 11. 检查 Luau 引擎错误
+    if (!state.system.luaEngineReady) {
+        showFengariError(state.system.luaEngineError || 'Luau 引擎初始化失败');
     } else {
         console.log('[Lua Quest] 初始化完成');
         showNotification('欢迎来到 Lua Quest！点击「运行」开始你的开发者之旅。', 'info');
@@ -718,8 +722,8 @@ function updateCursorPosition() {
 // ============================================================================
 async function runCode() {
     // 检查离线模式
-    if (state.system.offlineMode || !state.system.fengariLoaded) {
-        showNotification('离线模式下无法运行代码，请联网重试或点击「重试」', 'warning');
+    if (state.system.offlineMode || !state.system.luaEngineReady) {
+        showNotification('引擎未就绪，请联网重试或点击「重试」', 'warning');
         return;
     }
     
@@ -737,15 +741,18 @@ async function runCode() {
     switchPanelTab('console');
     
     try {
-        const result = await runLuauCode(code, state);
+        const engine = window.luaEngine;
+        const fn = engine.loadstring(code, 'main');
+        const result = await fn();
+        
         logToConsole(`> 运行完成`, 'success');
-        if (result.output) {
-            logToConsole(result.output, 'log');
+        if (result && result.length > 0) {
+            logToConsole(result.map(r => String(r)).join('\t'), 'log');
         }
         elements.editorStatus.textContent = '运行成功';
         
         // 检查是否完成目标
-        checkObjectives(code, result);
+        checkObjectives(code, { output: result?.join?.('\t') || '' });
     } catch (error) {
         logToConsole(`> 错误: ${error.message}`, 'error');
         elements.editorStatus.textContent = '运行失败';
@@ -757,8 +764,8 @@ async function runCode() {
 
 async function runTests() {
     // 检查离线模式
-    if (state.system.offlineMode || !state.system.fengariLoaded) {
-        showNotification('离线模式下无法运行测试', 'warning');
+    if (state.system.offlineMode || !state.system.luaEngineReady) {
+        showNotification('引擎未就绪，无法运行测试', 'warning');
         return;
     }
     
@@ -777,13 +784,17 @@ async function runTests() {
     const results = [];
     for (const test of chapter.tests) {
         try {
-            const result = await runLuauCode(test.code, state);
-            const passed = test.assert(result);
+            const engine = window.luaEngine;
+            const fn = engine.loadstring(test.code, 'test');
+            const startTime = performance.now();
+            const result = await fn();
+            const duration = Math.round(performance.now() - startTime);
+            const passed = test.assert({ result, duration });
             results.push({
                 name: test.name,
                 passed,
-                duration: result.duration,
-                error: passed ? null : result.error,
+                duration,
+                error: passed ? null : 'Assertion failed',
             });
             renderTestItem(results[results.length - 1]);
         } catch (error) {

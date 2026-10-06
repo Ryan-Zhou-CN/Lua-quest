@@ -10,8 +10,15 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="stylesheet" href="styles.css">
-    <!-- 加载 Fengari UMD 版本 (本地离线可用) -->
-    <script src="vendor/fengari-bundle.js"></script>
+    <!-- luau-web 通过 ES Module 动态加载，无需 UMD bundle -->
+    <script type="importmap">
+  {
+    "imports": {
+      "luau-web": "./engine/node_modules/luau-web/src/index.js",
+      "luau-web/": "./engine/node_modules/luau-web/src/"
+    }
+  }
+</script>
 </head>
 <body>
     <!-- 加载屏幕 -->
